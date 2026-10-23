@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 环境变量与密钥
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# 本地生成的分析报告
+outputs/
+
+# 真实 / 脱敏数据（不提交到版本库）
+data/raw/
+data/*.csv
+data/*.xlsx
+!data/sample/
+!data/sample/**
