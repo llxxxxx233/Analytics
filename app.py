@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import config
-from src import analytics, data_loader, data_validator, insights
+from src import analytics, data_loader, data_validator, insights, report_generator
 
 # ---- 调色板（dataviz 参考调色板 · 浅色模式）----
 ACCENT = "#2a78d6"
@@ -102,14 +102,15 @@ def bar_fig(df: pd.DataFrame, x: str, y: str, text_fmt: str, hover: str, color: 
 
 
 def coverage_bucket(days: float) -> tuple[str, str, str]:
-    """(状态标签, 颜色, 图标)。"""
-    if pd.isna(days):
-        return "无销售数据", MUTED, "·"
-    if days < 14:
-        return "可能缺货", STATUS["critical"], "▲"
-    if days <= 90:
-        return "正常", STATUS["good"], "●"
-    return "积压风险", STATUS["serious"], "▼"
+    """(状态标签, 颜色, 图标)。标签统一由 analytics.classify_coverage 给出。"""
+    label = analytics.classify_coverage(days)
+    color = {
+        "可能缺货": STATUS["critical"],
+        "正常": STATUS["good"],
+        "积压风险": STATUS["serious"],
+    }.get(label, MUTED)
+    icon = {"可能缺货": "▲", "正常": "●", "积压风险": "▼"}.get(label, "·")
+    return label, color, icon
 
 
 def coverage_fig(df: pd.DataFrame) -> go.Figure:
@@ -193,6 +194,8 @@ if orders is None:
 
 if st.session_state.get("source") == "示例数据":
     st.warning("⚠️ 当前展示的是**模拟数据**，仅用于功能演示，不代表真实经营成果。")
+
+source_label = "模拟数据" if st.session_state.get("source") == "示例数据" else "上传数据"
 
 # 合并商品信息（品类 / IP / 规格 / 成本）
 merged = data_loader.merge_product_info(orders, products)
@@ -288,7 +291,6 @@ else:
 st.divider()
 st.header("🤖 AI 数据洞察")
 
-source_label = "模拟数据" if st.session_state.get("source") == "示例数据" else "上传数据"
 context = insights.build_data_context(summary, full_prod, cat_df, chan_df, cov, source_label)
 
 with st.expander("查看 AI 使用的数据上下文（先计算）"):
@@ -330,6 +332,26 @@ else:
         st.markdown(st.session_state["ai_answer"])
     if st.session_state.get("ai_copy"):
         st.markdown(st.session_state["ai_copy"])
+
+# ---- 报告导出 ----
+st.divider()
+st.subheader("📄 导出分析报告")
+report_md = report_generator.build_report(
+    summary=summary,
+    top_products=full_prod,
+    categories=cat_df,
+    channels=chan_df,
+    coverage=cov,
+    quality_text=report.summary(),
+    source_label=source_label,
+    ai_insight=st.session_state.get("ai_answer") or None,
+)
+st.download_button(
+    "下载 Markdown 报告",
+    data=report_md,
+    file_name="衍生品经营分析报告.md",
+    mime="text/markdown",
+)
 
 # 数据预览
 with st.expander("查看原始数据"):

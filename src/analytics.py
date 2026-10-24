@@ -118,3 +118,14 @@ def inventory_coverage(orders: pd.DataFrame, inventory: pd.DataFrame) -> pd.Data
     out["total_quantity"] = out["total_quantity"].fillna(0)
     out["coverage_days"] = out["stock"] / out["avg_daily_sales"].replace(0, pd.NA)
     return out.sort_values("coverage_days", na_position="last").reset_index(drop=True)
+
+
+def classify_coverage(days: float) -> str:
+    """按库存覆盖天数分类：可能缺货 / 正常 / 积压风险 / 无销售数据。"""
+    if pd.isna(days):
+        return "无销售数据"
+    if days < 14:
+        return "可能缺货"
+    if days <= 90:
+        return "正常"
+    return "积压风险"
